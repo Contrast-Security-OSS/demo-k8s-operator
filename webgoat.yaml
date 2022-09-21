@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webgoat
+  namespace: default
+  labels:
+    contrast: java
+spec:
+  selector:
+    matchLabels:
+      app: webgoat
+  template:
+    metadata:
+      labels:
+        app: webgoat
+    spec:
+      containers:
+        - image: webgoat/webgoat-7.1
+          name: webgoat
+          ports: 
+          - containerPort: 8080
