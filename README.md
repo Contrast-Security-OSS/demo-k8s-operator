@@ -70,7 +70,7 @@ It provides a way of deploying a K8S service using Terraform, adding the Contras
       selector:
         labels:
           - name: contrast
-            value: assess
+            value: java
     EOF
     ```
 
@@ -78,8 +78,29 @@ It provides a way of deploying a K8S service using Terraform, adding the Contras
 
         kubectl apply -f webgoat.yaml
 
-1. View the Kubernetes dashboard:
+1. You application should not be up. View the Kubernetes dashboard:
 
         az aks browse --resource-group $(terraform output resource_group_name | tr -d '"') --name $(terraform output  kubernetes_cluster_name | tr -d '"')
 
 1. After your demo, run `terraform destroy --auto-approve` to remove all resources.
+
+# Troubleshooting
+
+1. If everything deployed but the app did not appear, check the application logs based on :
+
+        kubectl -n default logs Deployment/webgoat
+
+1. Show logging from the init container on the pod:
+
+        kubectl logs Deployment/webgoat -c contrast-init
+
+1. If Contrast isn't featured then check the operator logs:
+
+        kubectl logs -f deployment/contrast-agent-operator  --namespace contrast-agent-operator
+
+1. If you don't have operator logs, check everything is configured:
+
+        kubectl get all,secrets,clusteragentconfiguration,clusteragentconnection --namespace contrast-agent-operator
+
+
+
