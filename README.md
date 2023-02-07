@@ -1,23 +1,31 @@
 # Contrast Agent Operator Demo
 
-This repo is based on [Provision an AKS Cluster learn guide](https://learn.hashicorp.com/terraform/kubernetes/provision-aks-cluster), containing Terraform configuration files to provision an AKS cluster on Azure.
+This repo is based on [AKS Cluster learn guide](https://learn.hashicorp.com/terraform/kubernetes/provision-aks-cluster) and [Provision and EKS Cluster (AWS)](https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks), containing Terraform configuration files to provision an AKS or EKS cluster.
 
-It provides a way of deploying a K8S service using Terraform, adding the Contrast Agent Operator then finally deploying a vulnerable application (webgoat).
+It provides a way of deploying a K8S service using Terraform, adding the Contrast Agent Operator then finally deploying your vulnerable applications.
 
 # Pre-requisites
 
 1. Install Terraform from here: https://www.terraform.io/downloads.html.
 1. Install the Azure cli tools using `brew update && brew install azure-cli`.
 1. Install kubectl
-1. Log into Azure to make sure you cache your credentials using `az login`.
-1. Edit the [variables.tf](variables.tf) file (or add a terraform.tfvars) to add your initials and preferred Azure location.
-1. Run `terraform init` to download the required plugins.
 
 # Steps
+1. Change directory to the [AKS](/terraform-aks/) or [EKS](/terraform-aks/) folder (AKS takes ~5 mins/AWS takes ~15 mins).
+1. If your AWS/Azure CLI is not authenticated then log into the Azure (`az login`) or AWS CLI (`aws configure`) to cache your credentials.
+1. Edit the [variables.tf](variables.tf) file (or add a terraform.tfvars) to add your initials and preferred Azure location. Example is here for EKS:
+
+        region="us-east-1"
+        initials="da"
+
+1. Run `terraform init` to download the required plugins.
 1. Run `terraform apply` to deploy a new cluster.
-1. Grab your AKS credentials for kubectl:
+1. Grab your AKS or EKA credentials for kubectl:
 
         az aks get-credentials --resource-group $(terraform output resource_group_name | tr -d '"') --name $(terraform output kubernetes_cluster_name | tr -d '"')
+
+        aws eks --region $(terraform output -raw region) update-kubeconfig \
+        --name $(terraform output -raw cluster_name)
 
 1. Install the Contrast Kubernetes operator:
 
@@ -76,11 +84,13 @@ It provides a way of deploying a K8S service using Terraform, adding the Contras
 
 1. Run an application that has the `contrast: java` label, e.g. webgoat:
 
-        kubectl apply -f webgoat.yaml
+        kubectl apply -f ../webgoat.yaml
 
 1. You application should not be up. View the Kubernetes dashboard:
 
         az aks browse --resource-group $(terraform output resource_group_name | tr -d '"') --name $(terraform output  kubernetes_cluster_name | tr -d '"')
+
+        aws ???
 
 1. After your demo, run `terraform destroy --auto-approve` to remove all resources.
 
@@ -101,6 +111,3 @@ It provides a way of deploying a K8S service using Terraform, adding the Contras
 1. If you don't have operator logs, check everything is configured:
 
         kubectl get all,secrets,clusteragentconfiguration,clusteragentconnection --namespace contrast-agent-operator
-
-
-
