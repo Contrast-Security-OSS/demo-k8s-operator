@@ -1,0 +1,78 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: default-agent-connection-secret
+  namespace: contrast-agent-operator
+type: Opaque
+stringData:
+  apiKey: #Your Agent API Key
+  serviceKey: #Your Agent service Key
+  userName: #Your Agent username
+---
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: ClusterAgentConnection
+metadata:
+  name: default-agent-connection
+  namespace: contrast-agent-operator
+spec:
+  template:
+    spec:
+      url: https://eval.contrastsecurity.com/Contrast
+      apiKey:
+        secretName: default-agent-connection-secret
+        secretKey: apiKey
+      serviceKey:
+        secretName: default-agent-connection-secret
+        secretKey: serviceKey
+      userName:
+        secretName: default-agent-connection-secret
+        secretKey: userName
+---
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentInjector
+metadata:
+  name: contrast-agent-injector-java
+  namespace: default
+spec:
+  type: java
+  selector:
+    labels:
+      - name: contrast
+        value: java
+---
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentInjector
+metadata:
+  name: contrast-agent-injector-nodejs
+  namespace: default
+spec:
+  type: nodejs
+  selector:
+    labels:
+      - name: contrast
+        value: nodejs
+---
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentInjector
+metadata:
+  name: contrast-agent-injector-dotnet-code
+  namespace: default
+spec:
+  type: dotnet-core
+  selector:
+    labels:
+      - name: contrast
+        value: dotnet-core
+---
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentInjector
+metadata:
+  name: contrast-agent-injector-php
+  namespace: default
+spec:
+  type: php
+  selector:
+    labels:
+      - name: contrast
+        value: php
