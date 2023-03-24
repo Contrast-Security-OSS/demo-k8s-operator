@@ -64,7 +64,7 @@ spec:
       - name: contrast
         value: java-protect
   configuration:
-    name: protect-webgoat-agent-configuration
+    name: protect-agent-configuration-java
 ---
 apiVersion: agents.contrastsecurity.com/v1beta1
 kind: AgentInjector
@@ -90,7 +90,31 @@ spec:
       - name: contrast
         value: nodejs-protect
   configuration:
-    name: protect-juiceshop-agent-configuration
+    name: protect-agent-configuration-nodejs
+---
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentInjector
+metadata:
+  name: contrast-agent-injector-dotnet-code
+  namespace: default
+spec:
+  type: dotnet-core
+  selector:
+    labels:
+      - name: contrast
+        value: dotnet-core
+---
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentInjector
+metadata:
+  name: contrast-agent-injector-php
+  namespace: default
+spec:
+  type: php
+  selector:
+    labels:
+      - name: contrast
+        value: php
 ---
 # Create a default agent configuration to be used by AgentInjectors
 # This example will run Contrast Assess and report to the QA environment in 
@@ -116,7 +140,7 @@ spec:
 apiVersion: agents.contrastsecurity.com/v1beta1
 kind: AgentConfiguration
 metadata:
-  name: protect-webgoat-agent-configuration
+  name: protect-agent-configuration-java
   namespace: default
 spec:
   yaml: |
@@ -131,7 +155,7 @@ spec:
 apiVersion: agents.contrastsecurity.com/v1beta1
 kind: AgentConfiguration
 metadata:
-  name: protect-juiceshop-agent-configuration
+  name: protect-agent-configuration-nodejs
   namespace: default
 spec:
   yaml: |
