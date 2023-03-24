@@ -4,7 +4,7 @@ metadata:
   name: juice-shop
   namespace: default
   labels:
-    contrast: nodejs
+    contrast: nodejs-assess
 spec:
   selector:
     matchLabels:
