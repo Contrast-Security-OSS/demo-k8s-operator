@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webgoat-prod
+  namespace: default
+  labels:
+    contrast: java-protect
+spec:
+  selector:
+    matchLabels:
+      app: webgoat-prod
+  template:
+    metadata:
+      labels:
+        app: webgoat-prod
+    spec:
+      containers:
+        - image: webgoat/webgoat-7.1
+          name: webgoat
+          ports: 
+          - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webgoat-service-prod
+  namespace: default
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: webgoat-prod

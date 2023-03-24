@@ -1,33 +1,79 @@
 # Contrast Agent Operator Demo
 
-This repo is based on [Provision an AKS Cluster learn guide](https://learn.hashicorp.com/terraform/kubernetes/provision-aks-cluster), containing Terraform configuration files to provision an AKS cluster on Azure.
+This repo includes examples of how to create a Kubernetes cluster, deploy the Contrast Agent Operator and some known vulnerable applications. Typical deployment times:
 
-It provides a way of deploying a K8S service using Terraform, adding the Contrast Agent Operator then finally deploying a vulnerable application (webgoat).
+* AKS - 5 mins
+* EKS - 20 mins
 
-# Pre-requisites
+---
 
-1. Install Terraform from here: https://www.terraform.io/downloads.html.
+## Deploying on Azure/AKS
+
+This deployment will typically take ±5 minutes.
+
+### Pre-requisites for Azure/AKS
+
+1. Install Terraform from here: <https://www.terraform.io/downloads.html>.
 1. Install the Azure cli tools using `brew update && brew install azure-cli`.
-1. Install kubectl
-1. Log into Azure to make sure you cache your credentials using `az login`.
-1. Edit the [variables.tf](variables.tf) file (or add a terraform.tfvars) to add your initials and preferred Azure location.
-1. Run `terraform init` to download the required plugins.
+1. Install kubectl using `brew update && brew install kubectl`.
 
-# Steps
+### Steps for Azure/AKS
+
+1. Change directory to the [AKS](/terraform-aks/) folder
+1. If your Azure CLI is not authenticated then log into the Azure (`az login`)  to cache your credentials.
+1. Create a terraform.tfvars file to add your initials and preferred Azure location, for example:
+
+        location="UK South"
+        initials="da"
+
+1. Run `terraform init` to download the required plugins.
 1. Run `terraform apply` to deploy a new cluster.
 1. Grab your AKS credentials for kubectl:
 
         az aks get-credentials --resource-group $(terraform output resource_group_name | tr -d '"') --name $(terraform output kubernetes_cluster_name | tr -d '"')
 
-1. Install the Contrast Kubernetes operator:
+1. Deploy the operator and demo apps.
+1. View the Kubernetes dashboard (optional):
+
+        az aks browse --resource-group $(terraform output resource_group_name | tr -d '"') --name $(terraform output  kubernetes_cluster_name | tr -d '"')
+
+1. After your demo, run `terraform destroy --auto-approve` to remove all resources.
+
+---
+
+## Deploying on AWS/EKS
+
+### Pre-requisites for AWS/EKS
+
+1. Install kubectl using `brew update && brew install kubectl`.
+1. Install the AWS CLI using `brew update && brew install awscli`.
+1. If your AWS CLI is not authenticated then run (`aws configure`)  to cache your credentials.
+1. Install eksctl using `brew update && brew install eksctl`.
+
+### Steps for AWS/EKS
+
+1. Create a K8S cluster using `eksctl create cluster --name sales-engineering-da --region us-east-2`
+1. Grab your EKS credentials for kubectl: `aws eks update-kubeconfig --region us-east-2 --name sales-engineering-da`
+1. After your demo, run `eksctl delete cluster --name sales-engineering-da --region us-east-2` to remove all resources.
+
+---
+
+## Installing the Contrast Agent Operator
+
+1. Install the operator:
 
         kubectl apply -f https://github.com/Contrast-Security-OSS/agent-operator/releases/latest/download/install-prod.yaml
 
-1. Check the operator is running:
+1. Configure the operator using one of the two options below:
 
-        kubectl -n contrast-agent-operator get pods
+### Express Configuration
 
-1. Configure the operator:
+1. Rename the [config-template.yaml](config-template.yaml) to config.yaml and add your agent credentials on lines 9-11. This file includes agent injectors for all languages.
+1. Run `kubectl apply -f config.yaml`
+
+### Step by Step Configuration
+
+1. Configure the operator credentials:
 
         kubectl -n contrast-agent-operator create secret generic default-agent-connection-secret --from-literal=apiKey=TODO --from-literal=serviceKey=TODO --from-literal=userName=TODO
 
@@ -56,7 +102,7 @@ It provides a way of deploying a K8S service using Terraform, adding the Contras
     EOF
     ```
 
-1. Create an AgentInjector:
+1. Create an AgentInjector (this should be done per target language - example is for Java):
 
     ```
     kubectl apply -f - <<EOF
@@ -74,33 +120,36 @@ It provides a way of deploying a K8S service using Terraform, adding the Contras
     EOF
     ```
 
-1. Run an application that has the `contrast: java` label, e.g. webgoat:
+---
 
-        kubectl apply -f webgoat.yaml
+## Deploying Applications
 
-1. You application should not be up. View the Kubernetes dashboard:
+1. Make sure you have the relevant agent injector created and deploy vulnerable applications from the apps folder, e.g.: `kubectl apply -f /apps/webgoat.yaml`
 
-        az aks browse --resource-group $(terraform output resource_group_name | tr -d '"') --name $(terraform output  kubernetes_cluster_name | tr -d '"')
+1. Visit your application in the browser via the external IP. Remember to add `/WebGoat` (or equivalent): `kubectl get services`
 
-1. After your demo, run `terraform destroy --auto-approve` to remove all resources.
+---
 
-# Troubleshooting
+## Troubleshooting
 
-1. If everything deployed but the app did not appear, check the application logs based on :
+### Troubleshoot the Application  
 
-        kubectl -n default logs Deployment/webgoat
+1. Check the app has the correct Contrast annotations: `kubectl describe Deployment/webgoat`
 
-1. Show logging from the init container on the pod:
+1. Check if Contrast is mentioned in the application logs: `kubectl -n default logs Deployment/webgoat`
 
-        kubectl logs Deployment/webgoat -c contrast-init
+1. Show logging from the init container on the pod: `kubectl logs Deployment/webgoat -c contrast-init`
 
-1. If Contrast isn't featured then check the operator logs:
+### Troubleshoot the Agent Operator  
 
-        kubectl logs -f deployment/contrast-agent-operator  --namespace contrast-agent-operator
+1. Check the operator is running: `kubectl -n contrast-agent-operator get pods`
+
+1. Check the operator logs: `kubectl logs -f deployment/contrast-agent-operator  --namespace contrast-agent-operator`
 
 1. If you don't have operator logs, check everything is configured:
 
         kubectl get all,secrets,clusteragentconfiguration,clusteragentconnection --namespace contrast-agent-operator
 
+1. Elevate the operator logging:
 
-
+        kubectl -n contrast-agent-operator set env deployment/contrast-agent-operator CONTRAST_LOG_LEVEL=Trace

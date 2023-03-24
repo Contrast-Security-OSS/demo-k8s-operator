@@ -1,0 +1,178 @@
+---
+# Create a Secret with your API keys and username. Get your keys from the 
+# Contrast Platform under User Settings > Your Keys. 
+apiVersion: v1
+kind: Secret
+metadata:
+  name: default-agent-connection-secret
+  namespace: contrast-agent-operator
+type: Opaque
+stringData:
+  apiKey: #Your Agent API Key
+  serviceKey: #Your Agent service Key
+  userName: #Your Agent username
+---
+# Define a default ClusterAgentConnection for all agents to use.
+# This uses the secrets defined above. 
+# Change the url value to match your Contrast Platform environment, eg: 
+#   - https://eval.contrastsecurity.com/Contrast
+#   - https://eval003.contrastsecurity.com/Contrast
+#   - https://app.contrastsecurity.com/Contrast
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: ClusterAgentConnection
+metadata:
+  name: default-agent-connection
+  namespace: contrast-agent-operator
+spec:
+  template:
+    spec:
+      url: https://eval.contrastsecurity.com/Contrast
+      apiKey:
+        secretName: default-agent-connection-secret
+        secretKey: apiKey
+      serviceKey:
+        secretName: default-agent-connection-secret
+        secretKey: serviceKey
+      userName:
+        secretName: default-agent-connection-secret
+        secretKey: userName
+---
+# Configure agent injectors for each language. Optionally create one Assess and
+# and one Protect AgentInjector for each language. The selector.labels defined 
+# here will be applied to deployments to automatically inject agents to workloads. 
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentInjector
+metadata:
+  name: contrast-agent-injector-java-assess
+  namespace: default
+spec:
+  type: java
+  selector:
+    labels:
+      - name: contrast
+        value: java-assess
+---
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentInjector
+metadata:
+  name: contrast-agent-injector-java-protect
+  namespace: default
+spec:
+  type: java
+  selector:
+    labels:
+      - name: contrast
+        value: java-protect
+  configuration:
+    name: protect-agent-configuration-java
+---
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentInjector
+metadata:
+  name: contrast-agent-injector-nodejs-assess
+  namespace: default
+spec:
+  type: nodejs
+  selector:
+    labels:
+      - name: contrast
+        value: nodejs-assess
+---
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentInjector
+metadata:
+  name: contrast-agent-injector-nodejs-protect
+  namespace: default
+spec:
+  type: nodejs-protect
+  selector:
+    labels:
+      - name: contrast
+        value: nodejs-protect
+  configuration:
+    name: protect-agent-configuration-nodejs
+---
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentInjector
+metadata:
+  name: contrast-agent-injector-dotnet-code
+  namespace: default
+spec:
+  type: dotnet-core
+  selector:
+    labels:
+      - name: contrast
+        value: dotnet-core
+---
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentInjector
+metadata:
+  name: contrast-agent-injector-php
+  namespace: default
+spec:
+  type: php
+  selector:
+    labels:
+      - name: contrast
+        value: php
+---
+# Create a default agent configuration to be used by AgentInjectors
+# This example will run Contrast Assess and report to the QA environment in 
+# the Contrast platform.
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: ClusterAgentConfiguration
+metadata:
+  name: default-agent-configuration
+  namespace: contrast-agent-operator
+spec:
+  namespaces:
+    - default
+  template:
+    spec:
+      yaml: |
+        server:
+          name: kubernetes-qa
+          environment: QA
+---
+# Create an alternative agent configuration for Contrast Protect
+# Pass a server.name value to the agent that is unique from the one used by Assess. 
+# Setting server.environment=PRODUCTION instructs the agent to run in Protect mode.
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentConfiguration
+metadata:
+  name: protect-agent-configuration-java
+  namespace: default
+spec:
+  yaml: |
+    server:
+      name: kubernetes-prod
+      environment: PRODUCTION
+  suppressDefaultServerName: true
+  suppressDefaultApplicationName: true
+---
+# Additional agent configuration can also be passed such as to configure 
+# additional logging. 
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentConfiguration
+metadata:
+  name: protect-agent-configuration-nodejs
+  namespace: default
+spec:
+  yaml: |
+    server:
+      name: kubernetes-prod
+      environment: PRODUCTION
+    agent:
+      logger:
+        stdout: true
+        level: WARN
+      service:
+        logger:
+          level: WARN
+          stdout: true
+      security_logger:
+        path: /dev/null
+    protect:
+      enable: true
+  suppressDefaultServerName: true
+  suppressDefaultApplicationName: true
