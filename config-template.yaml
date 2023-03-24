@@ -1,4 +1,6 @@
 ---
+# Create a Secret with your API keys and username. Get your keys from the 
+# Contrast Platform under User Settings > Your Keys. 
 apiVersion: v1
 kind: Secret
 metadata:
@@ -10,6 +12,12 @@ stringData:
   serviceKey: #Your Agent service Key
   userName: #Your Agent username
 ---
+# Define a default ClusterAgentConnection for all agents to use.
+# This uses the secrets defined above. 
+# Change the url value to match your Contrast Platform environment, eg: 
+#   - https://eval.contrastsecurity.com/Contrast
+#   - https://eval003.contrastsecurity.com/Contrast
+#   - https://app.contrastsecurity.com/Contrast
 apiVersion: agents.contrastsecurity.com/v1beta1
 kind: ClusterAgentConnection
 metadata:
@@ -29,50 +37,118 @@ spec:
         secretName: default-agent-connection-secret
         secretKey: userName
 ---
+# Configure agent injectors for each language. Optionally create one Assess and
+# and one Protect AgentInjector for each language. The selector.labels defined 
+# here will be applied to deployments to automatically inject agents to workloads. 
 apiVersion: agents.contrastsecurity.com/v1beta1
 kind: AgentInjector
 metadata:
-  name: contrast-agent-injector-java
+  name: contrast-agent-injector-java-assess
   namespace: default
 spec:
   type: java
   selector:
     labels:
       - name: contrast
-        value: java
+        value: java-assess
 ---
 apiVersion: agents.contrastsecurity.com/v1beta1
 kind: AgentInjector
 metadata:
-  name: contrast-agent-injector-nodejs
+  name: contrast-agent-injector-java-protect
+  namespace: default
+spec:
+  type: java
+  selector:
+    labels:
+      - name: contrast
+        value: java-protect
+  configuration:
+    name: protect-webgoat-agent-configuration
+---
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentInjector
+metadata:
+  name: contrast-agent-injector-nodejs-assess
   namespace: default
 spec:
   type: nodejs
   selector:
     labels:
       - name: contrast
-        value: nodejs
+        value: nodejs-assess
 ---
 apiVersion: agents.contrastsecurity.com/v1beta1
 kind: AgentInjector
 metadata:
-  name: contrast-agent-injector-dotnet-code
+  name: contrast-agent-injector-nodejs-protect
   namespace: default
 spec:
-  type: dotnet-core
+  type: nodejs-protect
   selector:
     labels:
       - name: contrast
-        value: dotnet-core
+        value: nodejs-protect
+  configuration:
+    name: protect-juiceshop-agent-configuration
 ---
+# Create a default agent configuration to be used by AgentInjectors
+# This example will run Contrast Assess and report to the QA environment in 
+# the Contrast platform.
 apiVersion: agents.contrastsecurity.com/v1beta1
-kind: AgentInjector
+kind: ClusterAgentConfiguration
 metadata:
-  name: contrast-agent-injector-php
+  name: default-agent-configuration
+  namespace: contrast-agent-operator
+spec:
+  namespaces:
+    - default
+  template:
+    spec:
+      yaml: |
+        server:
+          name: kubernetes-qa
+          environment: QA
+---
+# Create an alternative agent configuration for Contrast Protect
+# Pass a server.name value to the agent that is unique from the one used by Assess. 
+# Setting server.environment=PRODUCTION instructs the agent to run in Protect mode.
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentConfiguration
+metadata:
+  name: protect-webgoat-agent-configuration
   namespace: default
 spec:
-  type: php
-  selector:
-    labels:
-      - name: contrast
-        value: php
+  yaml: |
+    server:
+      name: kubernetes-prod
+      environment: PRODUCTION
+  suppressDefaultServerName: true
+  suppressDefaultApplicationName: true
+---
+# Additional agent configuration can also be passed such as to configure 
+# additional logging. 
+apiVersion: agents.contrastsecurity.com/v1beta1
+kind: AgentConfiguration
+metadata:
+  name: protect-juiceshop-agent-configuration
+  namespace: default
+spec:
+  yaml: |
+    server:
+      name: kubernetes-prod
+      environment: PRODUCTION
+    agent:
+      logger:
+        stdout: true
+        level: WARN
+      service:
+        logger:
+          level: WARN
+          stdout: true
+      security_logger:
+        path: /dev/null
+    protect:
+      enable: true
+  suppressDefaultServerName: true
+  suppressDefaultApplicationName: true
