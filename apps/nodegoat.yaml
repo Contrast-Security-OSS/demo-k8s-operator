@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodegoat
+  namespace: default
+  labels:
+    contrast: nodejs-assess
+spec:
+  selector:
+    matchLabels:
+      app: nodegoat
+  template:
+    metadata:
+      labels:
+        app: nodegoat
+    spec:
+      containers:
+      - name: web
+        image: contrastsecuritydemo/nodegoat:1.3.0
+        args: ["sh", "-c", "echo 'checking mongo' && until nc -z -w 2 127.0.0.1 27017 && echo 'mongo is ready for connections' && npm run db:seed && npm start; do sleep 2; done"]
+        ports:
+        - containerPort: 4000
+        env:
+        - name: MONGODB_URI
+          value: "mongodb://127.0.0.1:27017/nodegoat"
+      - name: mongo
+        image: mongo
+        ports:
+        - containerPort: 27017
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodegoat-service
+  namespace: default
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 4000
+  selector:
+    app: nodegoat
